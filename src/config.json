@@ -1,0 +1,14 @@
+{
+  "uri": "https://www.googleapis.com/customsearch/v1",
+  "headers": {
+    "user-agent": "UNED Requester (gzip)",
+    "accept-encoding": "gzip, deflate"
+  },
+  "params": { 
+    "fields": "kind,queries(request,nextPage),items(title,snippet,link)"
+  },
+  "n_workers": 10,
+  "scrapper_headers": {
+    "user-agent": "Mozilla/5.0 (platform; rv:geckoversion) Gecko/geckotrail Firefox/firefoxversion"
+  }
+}
