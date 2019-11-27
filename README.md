@@ -10,7 +10,11 @@ Example credentials:
 ```
 
 # Create docker instance for serving
+To create the docker image, issue:
+
+```bash
 docker build -t search-server:latest .
+```
 
 To start/stop the server just call `./start.sh`/`./stop.sh`
 
