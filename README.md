@@ -92,5 +92,7 @@ https://developers.google.com/custom-search/v1/introduction
 
 https://developers.google.com/custom-search/v1/using_rest
 
+https://developers.google.com/custom-search/v1/cse/list
+
 ## Querying google by hand:
 https://www.googleapis.com/customsearch/v1?key=API_KEY&cx=SEARCH_ENGINE_UID&q=QUERY
