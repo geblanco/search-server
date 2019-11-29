@@ -99,7 +99,7 @@ def serve(env, flags):
 
   app = Flask(__name__)
 
-  @app.route('/search', methods=['GET'])
+  @app.route('/search', methods=['GET', 'POST'])
   def search():
     data = request.get_json()
     if data is None:
