@@ -47,15 +47,16 @@ class Scrapper(object):
     return paragraphs
 
   def scrape(self):
-    print(f'Fetching {self.url}')
+    # print(f'Fetching {self.url}')
     req = requests.get(self.url, headers=self.req_headers, timeout=10)
     paragraphs = []
     if req.status_code != 200:
-      print('Nothing to scrap, code %s' % (req.status_code))
+      pass
+      # print('Nothing to scrap, code %s' % (req.status_code))
     else:
       text = req.text
       soup = BeautifulSoup(text, features="html.parser")
-      print(f'Scrapping {self.url}')
+      # print(f'Scrapping {self.url}')
       paragraphs = self.clean_soup(soup)
     return {'link': self.url, 'paragraphs': paragraphs}
 
