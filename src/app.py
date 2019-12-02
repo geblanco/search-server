@@ -33,7 +33,7 @@ def parse_args():
 
   return parser.parse_args()
 
-def execute(link):
+def scrapper_executor(link):
   scrapper = Scrapper(link, SCRAPPER_HEADERS)
   result = scrapper.scrape()
   return result
@@ -44,7 +44,8 @@ def process_items(items):
   links = [i['link'] for i in items]
   with PoolExecutor(max_workers=N_WORKERS) as executor:
     futures_to_link = {
-      executor.submit(execute, link): (id, link) for id, link in enumerate(links)
+      executor.submit(scrapper_executor, link): (id, link) 
+        for id, link in enumerate(links)
     } 
     for future in concurrent.futures.as_completed(futures_to_link):
       id, link = futures_to_link[future]
@@ -60,7 +61,7 @@ def merge_dicts(dict_1, dict_2):
 
 def calculate_numof_requests(limit):
   upper = math.ceil(limit /10)
-  return upper*10
+  return upper
 
 def pair_items_by_links(processed_items, items):
   ret = []
@@ -75,16 +76,18 @@ def clean_items(items):
       item[key] = strip_non_ascii(item[key])
   return items
 
-def extract_cursor_fields_from_result(results):
-  print(results['queries'])
-  total_results = int(results['queries']['request'][0]['totalResults'])
-  nof_results = results['queries']['request'][0]['count']
+def extract_cursor_fields(results):
   next_page = results['queries']['nextPage']
-  return total_results, nof_results, next_page
+  nof_results = results['queries']['request'][0]['count']
+  return next_page, nof_results
 
-def insert_cursor_fields(results, nof_results, next_page):
-  results['queries']['request'][0]['count'] = nof_results
+def extract_index_from_page(page):
+  return page[0]['startIndex']
+
+def insert_cursor_fields(results, next_page, nof_results):
   results['queries']['nextPage'] = next_page
+  results['queries']['request'][0]['count'] = nof_results
+  results['queries']['request'][0]['startIndex'] = 1
   return results
 
 def prepare_request(src_env, query, start=1):
@@ -92,11 +95,15 @@ def prepare_request(src_env, query, start=1):
   # add search criteria
   env['params']['q'] = query
   env['params']['start'] = start
-  prep_req = Request('GET', env['uri'], params=env['params'], headers=env['headers'])
-  return prep_req.prepare()
+  prep_request = Request('GET', env['uri'], params=env['params'], headers=env['headers'])
+  return prep_request.prepare()
 
 def process_request(session, prep_request):
   request = session.send(prep_request)
+  if request.status_code != 200:
+    print('Failed to request', request.json(), prep_request.url,
+        prep_request.headers)
+    return None
   req_json = request.json()
   items = clean_items(req_json['items'])
   processed_items = process_items(items)
@@ -104,38 +111,48 @@ def process_request(session, prep_request):
   req_json['items'] = items
   return req_json
 
-def process_query(session, env, query, flags):
-  items = []
-  next_page = None
-  last_result = None
-  requested_nof_results = 0
-  n_requests = calculate_numof_requests(flags.limit)
-  # ToDo := Parallelize this (think about sync over totalResults)
-  # query 10 by 10 (max allowed by google)
-  print('range ', n_requests, list(range(1, n_requests*GOOGLE_NOF_RESULTS, GOOGLE_NOF_RESULTS)))
-  print('range', n_requests, GOOGLE_NOF_RESULTS)
-  for n in range(1, n_requests, GOOGLE_NOF_RESULTS):
-    request = prepare_request(env, query, n)
-    results = process_request(session, request)
-    cursor = extract_cursor_fields_from_result(results)
-    total_results, nof_results, next_page = cursor
-    requested_nof_results += nof_results
-    last_result = results
-    if requested_nof_results < total_results:
-      items.append(results['items'])
-    else:
-      break
-  last_result['items'].extend(items)
-  last_result = insert_cursor_fields(last_result, requested_nof_results, next_page)
+def query_executor(session, env, query, start):
+  request = prepare_request(env, query, start)
+  results = process_request(session, request)
   return results
+
+def process_query(session, env, query, limit):
+  items = []
+  last_result, next_page = None, None
+  next_page_max_start, nof_results = 0, 0
+  nof_requests = calculate_numof_requests(limit)
+  # query 10 by 10 (max allowed by google)
+  with PoolExecutor(max_workers=nof_requests) as executor:
+    futures = [
+      executor.submit(query_executor, session, env, query, n)
+        for n in range(1, nof_requests * GOOGLE_NOF_RESULTS, GOOGLE_NOF_RESULTS)
+    ]
+    for future in concurrent.futures.as_completed(futures):
+      try:
+        data = future.result()
+        items.extend(data['items'])
+        page, count_results = extract_cursor_fields(data)
+        nof_results += count_results
+        next_page_start = extract_index_from_page(page)
+        if next_page_start > next_page_max_start:
+          next_page_max_start = next_page_start
+          last_result = data
+          next_page, _ = extract_cursor_fields(data)
+      except Exception as exc:
+        print('%r generated an exception' % exc)
+  
+  last_result['items'] = items
+  last_result = insert_cursor_fields(last_result, next_page, nof_results)
+  return last_result
 
 def single_query(env, flags):
   if flags.url:
     print(prepare_request(env, flags.query).url)
   else:
     session = Session()
-    results = process_query(session, env, flags.query, flags)
-    print(json.dumps(results, indent=2))
+    results = process_query(session, env, flags.query, flags.limit)
+    # print(json.dumps(results, indent=2))
+    json.dump(fp=open(f'{flags.query}.json', 'w'), obj=results, indent=2)
 
 def serve(env, flags):
   session = Session()
@@ -149,9 +166,10 @@ def serve(env, flags):
       return jsonify({})
     query = data.get('query', None)
     limit = data.get('limit', flags.limit)
+    print(f'Serving query: {query} with limit {limit}')
     if query is None:
       return jsonify({})
-    return jsonify(process_query(session, env, query, flags))
+    return jsonify(process_query(session, env, query, limit))
 
   # serve on all interfaces with ip on given port
   http_server = WSGIServer(('0.0.0.0', flags.port), app)
