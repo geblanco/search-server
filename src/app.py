@@ -164,7 +164,7 @@ def serve(env, flags):
     data = request.get_json()
     if data is None:
       return jsonify({})
-    query = data.get('query', None)
+    query = data.get('text', None)
     limit = data.get('limit', flags.limit)
     print(f'Serving query: {query} with limit {limit}')
     if query is None:
