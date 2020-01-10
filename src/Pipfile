@@ -9,6 +9,7 @@ requests = "*"
 beautifulsoup4 = "*"
 flask = "*"
 gevent = "*"
+nltk = "*"
 
 [dev-packages]
 

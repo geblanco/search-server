@@ -35,7 +35,7 @@ def parse_args():
 
 def scrapper_executor(link):
   scrapper = Scrapper(link, SCRAPPER_HEADERS)
-  result = scrapper.scrape()
+  result = scrapper.scrap()
   return result
 
 def process_items(items):

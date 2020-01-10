@@ -1,5 +1,7 @@
 from bs4 import BeautifulSoup
 from utils import strip_non_ascii
+from nltk.tokenize import sent_tokenize, word_tokenize
+from urllib.parse import urlparse, parse_qs
 
 import requests
 import re
@@ -46,7 +48,32 @@ class Scrapper(object):
       paragraphs = self.exhaustive_process(soup)
     return paragraphs
 
-  def scrape(self):
+  def paragraphs_to_doc(self, paragraphs):
+    return '. '.join([art[:-1] if art.endswith('.') else art for art in
+      articles])
+
+  def get_query_from_url(self, url):
+    url_query = urlparse(prep_req.url).query
+    decoded_qs = parse_qs(url_query)
+    query = decoded_qs['q']
+    return ' '.join(query)
+
+  def filter_sentence(self, sentence, keyword):
+    kw_words = [w.lower() for w in word_tokenize(keyword)]
+    sent_lower = sentence.lower()
+    match = 0
+    for word in kw_words:
+      if sent_lower.find(word) != -1:
+        match += 1
+    return (match/len(kw_words)) >= 0.5
+
+  def filter_sentences_from_paragraphs(self, paragraphs, keyword):
+    doc = self.paragraphs_to_doc(paragraphs)
+    sentences = sent_tokenize(doc)
+    return [sentence for sentence in sentences
+              if self.filter_sentence(sentence, keyword)]
+
+  def scrap(self):
     # print(f'Fetching {self.url}')
     req = requests.get(self.url, headers=self.req_headers, timeout=10)
     paragraphs = []
@@ -58,5 +85,7 @@ class Scrapper(object):
       soup = BeautifulSoup(text, features="html.parser")
       # print(f'Scrapping {self.url}')
       paragraphs = self.clean_soup(soup)
-    return {'link': self.url, 'paragraphs': paragraphs}
+      keyword = self.get_query_from_url(self.url)
+      sentences = self.filter_sentences_from_paragraphs(paragraphs, keyword)
+    return {'link': self.url, 'paragraphs': paragraphs, 'sentences': sentences}
 
