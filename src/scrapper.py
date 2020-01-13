@@ -1,7 +1,6 @@
 from bs4 import BeautifulSoup
 from utils import strip_non_ascii
 from nltk.tokenize import sent_tokenize, word_tokenize
-from urllib.parse import urlparse, parse_qs
 
 import requests
 import re
@@ -14,9 +13,10 @@ BLACKLIST = [
 ]
 
 class Scrapper(object):
-  def __init__(self, url, req_headers):
+  def __init__(self, url, req_headers, filter_kwords=None):
     self.url = url
     self.req_headers = req_headers
+    self.filter_kwords = filter_kwords
 
   def clean_single_paragraph(self, paragraph):
     # strip non ascii chars, cites and multiple consucutive spaces
@@ -49,14 +49,7 @@ class Scrapper(object):
     return paragraphs
 
   def paragraphs_to_doc(self, paragraphs):
-    return '. '.join([art[:-1] if art.endswith('.') else art for art in
-      articles])
-
-  def get_query_from_url(self, url):
-    url_query = urlparse(prep_req.url).query
-    decoded_qs = parse_qs(url_query)
-    query = decoded_qs['q']
-    return ' '.join(query)
+    return '. '.join([art[:-1] if art.endswith('.') else art for art in paragraphs])
 
   def filter_sentence(self, sentence, keyword):
     kw_words = [w.lower() for w in word_tokenize(keyword)]
@@ -86,8 +79,8 @@ class Scrapper(object):
       soup = BeautifulSoup(text, features="html.parser")
       # print(f'Scrapping {self.url}')
       paragraphs = self.clean_soup(soup)
-      # keyword = self.get_query_from_url(self.url)
-      # sentences = self.filter_sentences_from_paragraphs(paragraphs, keyword)
+      keyword = self.filter_kwords
+      sentences = self.filter_sentences_from_paragraphs(paragraphs, keyword)
     # return {'link': self.url, 'paragraphs': paragraphs, 'sentences': sentences}
     return {'link': self.url, 'paragraphs': paragraphs}
 

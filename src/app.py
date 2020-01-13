@@ -33,18 +33,18 @@ def parse_args():
 
   return parser.parse_args()
 
-def scrapper_executor(link):
-  scrapper = Scrapper(link, SCRAPPER_HEADERS)
+def scrapper_executor(link, original_query):
+  scrapper = Scrapper(link, SCRAPPER_HEADERS, filter_kwords=original_query)
   result = scrapper.scrap()
   return result
 
-def process_items(items):
+def process_items(items, original_query=None):
   # store indexed items to preserve rank order later
   pages = {}
   links = [i['link'] for i in items]
   with PoolExecutor(max_workers=N_WORKERS) as executor:
     futures_to_link = {
-      executor.submit(scrapper_executor, link): (id, link) 
+      executor.submit(scrapper_executor, link, original_query): (id, link) 
         for id, link in enumerate(links)
     } 
     for future in concurrent.futures.as_completed(futures_to_link):
@@ -98,7 +98,7 @@ def prepare_request(src_env, query, start=1):
   prep_request = Request('GET', env['uri'], params=env['params'], headers=env['headers'])
   return prep_request.prepare()
 
-def process_request(session, prep_request):
+def process_request(session, prep_request, query):
   request = session.send(prep_request)
   if request.status_code != 200:
     print('Failed to request', request.json(), prep_request.url,
@@ -106,14 +106,14 @@ def process_request(session, prep_request):
     return None
   req_json = request.json()
   items = clean_items(req_json['items'])
-  processed_items = process_items(items)
+  processed_items = process_items(items, query)
   items = pair_items_by_links(processed_items, items)
   req_json['items'] = items
   return req_json
 
 def query_executor(session, env, query, start):
   request = prepare_request(env, query, start)
-  results = process_request(session, request)
+  results = process_request(session, request, query)
   return results
 
 def process_query(session, env, query, limit):
