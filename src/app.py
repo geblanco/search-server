@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor as PoolExecutor
 from requests import Session, Request
 from scrapper import Scrapper
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from gevent.pywsgi import WSGIServer
 from utils import strip_non_ascii
 
@@ -10,7 +10,7 @@ import argparse
 import json
 import math
 
-SCRAPPER_HEADERS = None
+SCRAPPER_HEADERS = { 'Content-Type': 'text/html; charset=utf-8'}
 N_WORKERS = None
 GOOGLE_NOF_RESULTS = 10
 
@@ -152,7 +152,13 @@ def single_query(env, flags):
     session = Session()
     results = process_query(session, env, flags.query, flags.limit)
     # print(json.dumps(results, indent=2))
-    json.dump(fp=open(f'{flags.query}.json', 'w'), obj=results, indent=2)
+    json.dump(fp=open(f'{flags.query}.json', 'w'), obj=results, indent=2, ensure_ascii=False)
+
+def jsonify(app, data):
+  return app.response_class(
+    json.dumps(obj=data, indent=None, separators=(",", ":"), ensure_ascii=False),
+    mimetype=app.config["JSONIFY_MIMETYPE"]
+  )
 
 def serve(env, flags):
   session = Session()
@@ -169,7 +175,7 @@ def serve(env, flags):
     print(f'Serving query: {query} with limit {limit}')
     if query is None:
       return jsonify({})
-    return jsonify(process_query(session, env, query, limit))
+    return jsonify(app, process_query(session, env, query, limit))
 
   # serve on all interfaces with ip on given port
   http_server = WSGIServer(('0.0.0.0', flags.port), app)

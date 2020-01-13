@@ -81,11 +81,13 @@ class Scrapper(object):
       pass
       # print('Nothing to scrap, code %s' % (req.status_code))
     else:
+      req.encoding = 'utf-8'
       text = req.text
       soup = BeautifulSoup(text, features="html.parser")
       # print(f'Scrapping {self.url}')
       paragraphs = self.clean_soup(soup)
-      keyword = self.get_query_from_url(self.url)
-      sentences = self.filter_sentences_from_paragraphs(paragraphs, keyword)
-    return {'link': self.url, 'paragraphs': paragraphs, 'sentences': sentences}
+      # keyword = self.get_query_from_url(self.url)
+      # sentences = self.filter_sentences_from_paragraphs(paragraphs, keyword)
+    # return {'link': self.url, 'paragraphs': paragraphs, 'sentences': sentences}
+    return {'link': self.url, 'paragraphs': paragraphs}
 
