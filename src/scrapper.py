@@ -16,7 +16,17 @@ class Scrapper(object):
   def __init__(self, url, req_headers, filter_kwords=None):
     self.url = url
     self.req_headers = req_headers
-    self.filter_kwords = filter_kwords
+    self.filter_kwords = self.setup_filter_kwords(filter_kwords)
+
+  def setup_filter_kwords(self, filter_kwords):
+    kwords = None
+    if filter_kwords is not None:
+      kwords = filter_kwords
+      if type(kwords) == str:
+        kwords = [kwords]
+      kwords = [str(f) for f in kwords]
+    
+    return kwords
 
   def clean_single_paragraph(self, paragraph):
     # strip non ascii chars, cites and multiple consucutive spaces
@@ -60,16 +70,24 @@ class Scrapper(object):
         match += 1
     return (match/len(kw_words)) >= 0.5
 
-  def filter_sentences_from_paragraphs(self, paragraphs, keyword):
+  def filter_sentence_by_keywords(self, sentence, keywords):
+    matches = []
+    for keyword in keywords:
+      filt = self.filter_sentence(sentence, keyword)
+      matches.append(int(filt))
+    return sum(matches) == len(keywords)
+
+  def filter_sentences_from_paragraphs(self, paragraphs, keywords):
     doc = self.paragraphs_to_doc(paragraphs)
     sentences = sent_tokenize(doc)
     return [sentence for sentence in sentences
-              if self.filter_sentence(sentence, keyword)]
+              if self.filter_sentence_by_keywords(sentence, keywords)]
 
   def scrap(self):
     # print(f'Fetching {self.url}')
     req = requests.get(self.url, headers=self.req_headers, timeout=10)
     paragraphs = []
+    sentences = []
     if req.status_code != 200:
       pass
       # print('Nothing to scrap, code %s' % (req.status_code))
@@ -81,6 +99,5 @@ class Scrapper(object):
       paragraphs = self.clean_soup(soup)
       keyword = self.filter_kwords
       sentences = self.filter_sentences_from_paragraphs(paragraphs, keyword)
-    # return {'link': self.url, 'paragraphs': paragraphs, 'sentences': sentences}
-    return {'link': self.url, 'paragraphs': paragraphs}
+    return {'link': self.url, 'paragraphs': paragraphs, 'sentences': sentences}
 

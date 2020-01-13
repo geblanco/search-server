@@ -90,10 +90,15 @@ def insert_cursor_fields(results, next_page, nof_results):
   results['queries']['request'][0]['startIndex'] = 1
   return results
 
+def prepare_query(query):
+  if type(query) == list:
+    return ' AND '.join(['"{}"'.format(q) for q in query])
+  return query
+
 def prepare_request(src_env, query, start=1):
   env= src_env.copy()
   # add search criteria
-  env['params']['q'] = query
+  env['params']['q'] = prepare_query(query)
   env['params']['start'] = start
   prep_request = Request('GET', env['uri'], params=env['params'], headers=env['headers'])
   return prep_request.prepare()
