@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor as PoolExecutor
 from requests import Session, Request
 from scrapper import Scrapper
-from flask import Flask, request
+from flask import Flask, request, abort
 from gevent.pywsgi import WSGIServer
 from utils import strip_non_ascii
 
@@ -130,6 +130,9 @@ def process_query(session, env, query, limit):
     for future in concurrent.futures.as_completed(futures):
       try:
         data = future.result()
+        if data is None:
+          # If Quota exceeded, google fails with an error, nothing left to do
+          break
         items.extend(data['items'])
         page, count_results = extract_cursor_fields(data)
         nof_results += count_results
@@ -141,6 +144,8 @@ def process_query(session, env, query, limit):
       except Exception as exc:
         print('%r generated an exception' % exc)
   
+  if last_result is None:
+    return None
   last_result['items'] = items
   last_result = insert_cursor_fields(last_result, next_page, nof_results)
   return last_result
@@ -150,7 +155,7 @@ def single_query(env, flags):
     print(prepare_request(env, flags.query).url)
   else:
     session = Session()
-    results = process_query(session, env, flags.query, flags.limit)
+    results = process_query(session, env, flags.query, flags.limit) or { 'error': 403 }
     # print(json.dumps(results, indent=2))
     json.dump(fp=open(f'{flags.query}.json', 'w'), obj=results, indent=2, ensure_ascii=False)
 
@@ -169,13 +174,17 @@ def serve(env, flags):
   def search():
     data = request.get_json()
     if data is None:
-      return jsonify({})
+      return jsonify(app, {})
     query = data.get('text', None)
     limit = data.get('limit', flags.limit)
     print(f'Serving query: {query} with limit {limit}')
     if query is None:
-      return jsonify({})
-    return jsonify(app, process_query(session, env, query, limit))
+      return jsonify(app, {})
+    results = process_query(session, env, query, limit)
+    if results is None:
+      return abort(403)
+    
+    return jsonify(app, results)
 
   # serve on all interfaces with ip on given port
   http_server = WSGIServer(('0.0.0.0', flags.port), app)
