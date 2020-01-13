@@ -2,6 +2,9 @@ from bs4 import BeautifulSoup
 from utils import strip_non_ascii
 from nltk.tokenize import sent_tokenize, word_tokenize
 
+import nltk
+nltk.download('punkt')
+
 import requests
 import re
 
