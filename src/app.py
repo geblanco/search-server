@@ -132,7 +132,7 @@ def process_query(session, env, query, limit):
         data = future.result()
         if data is None:
           # If Quota exceeded, google fails with an error, nothing left to do
-          break
+          continue
         items.extend(data['items'])
         page, count_results = extract_cursor_fields(data)
         nof_results += count_results
