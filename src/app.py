@@ -13,6 +13,7 @@ import math
 SCRAPPER_HEADERS = { 'Content-Type': 'text/html; charset=utf-8'}
 N_WORKERS = None
 GOOGLE_NOF_RESULTS = 10
+TIMEOUT = 5.0
 
 def parse_args():
   parser = argparse.ArgumentParser()
@@ -100,11 +101,11 @@ def prepare_request(src_env, query, start=1):
   # add search criteria
   env['params']['q'] = prepare_query(query)
   env['params']['start'] = start
-  prep_request = Request('GET', env['uri'], params=env['params'], headers=env['headers'])
-  return prep_request.prepare()
+  raw_request = Request('GET', env['uri'], params=env['params'], headers=env['headers'])
+  return raw_request
 
 def process_request(session, prep_request, query):
-  request = session.send(prep_request)
+  request = session.send(prep_request, timeout=TIMEOUT)
   if request.status_code != 200:
     print('Failed to request', request.json(), prep_request.url,
         prep_request.headers)
@@ -118,7 +119,8 @@ def process_request(session, prep_request, query):
 
 def query_executor(session, env, query, start):
   request = prepare_request(env, query, start)
-  results = process_request(session, request, query)
+  prep_request = session.prepare_request(request)
+  results = process_request(session, prep_request, query)
   return results
 
 def process_query(session, env, query, limit):

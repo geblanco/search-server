@@ -88,7 +88,7 @@ class Scrapper(object):
 
   def scrap(self):
     # print(f'Fetching {self.url}')
-    req = requests.get(self.url, headers=self.req_headers, timeout=10)
+    req = requests.get(self.url, headers=self.req_headers, timeout=5.0)
     paragraphs = []
     sentences = []
     if req.status_code != 200:
