@@ -19,8 +19,8 @@ def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('--url', '-u', required=False, action='store_true', 
       help='Just print the url to be requested (no request at all)')
-  parser.add_argument('--query', '-q', required=False, type=str,
-      help='Query term')
+  parser.add_argument('--query', '-q', required=False, nargs='*',
+      help='Query term', action='store')
   parser.add_argument('--limit', '-l', required=False, type=int,
       help='Number of results for the single query', default=10)
   parser.add_argument('--serve', '-s', required=False, action='store_true',
@@ -54,7 +54,7 @@ def process_items(items, original_query=None):
         data = future.result()
         pages[id] = data
       except Exception as exc:
-        print('%r generated an exception: %s' % (link, exc))
+        print('%s generated an exception: %r' % (link, exc))
   return [pages[id] for id in sorted(pages)]
 
 def merge_dicts(dict_1, dict_2):
@@ -149,7 +149,7 @@ def process_query(session, env, query, limit):
           last_result = data
           next_page, _ = extract_cursor_fields(data)
       except Exception as exc:
-        print('%r generated an exception' % exc)
+        print('%s generated an exception: %r' % (query, exc))
   
   if last_result is None:
     return None
