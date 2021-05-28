@@ -1,4 +1,5 @@
-FROM python
+FROM python:3.7
+MAINTAINER 'gblanco'
 
 WORKDIR /usr/app/
 COPY /src /usr/app/
