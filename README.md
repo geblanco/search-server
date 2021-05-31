@@ -29,7 +29,7 @@ The server responds to get requests on `/search` route, params:
 
 Example call:
 ```bash
-curl -X GET --header 'Content-Type: application/json' -d '{"query": "Snow Leopard"}' 'localhost:8000/search'
+curl -X GET --header 'Content-Type: application/json' -d '{"query": "Snow Leopard"}' 'localhost:9010/search'
 ```
 
 Example response:
