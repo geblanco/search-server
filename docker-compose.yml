@@ -1,0 +1,8 @@
+version: '3'
+services:
+  search_server:
+    build:
+      context: search-server
+    ports:
+      - '9010:8000'
+
