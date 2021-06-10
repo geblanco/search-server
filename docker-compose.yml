@@ -2,7 +2,7 @@ version: '3'
 services:
   search_server:
     build:
-      context: search-server
+      context: ./
     ports:
       - '9010:8000'
 
